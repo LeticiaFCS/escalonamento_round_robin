@@ -38,16 +38,15 @@ int max(int x, int y){
 }
 
 
-void round_robin(){
-	int finished_process = 0;
-	int clock_time = 0;
-	int disc_time = 0;
-	int printer_time = 0;
-	int magnetic_time = 0;
-	while(finished_process < number_of_process){
-		printf("CLOCK TIME: %d\n", clock_time);
-		 
-		while(!empty(qdisc_io)){
+
+int finished_process = 0;
+int clock_time = 0;
+int disc_time = 0;
+int printer_time = 0;
+int magnetic_time = 0;
+
+void returning_of_ios(){
+	while(!empty(qdisc_io)){
 			disc_time = max(disc_time, front(qdisc_io) -> push_time);
 			if(disc_time + io_time[DISC] <= clock_time){
 				printf("Process %d using DISC at time %d\n", front(qdisc_io) -> pid, disc_time);
@@ -58,44 +57,53 @@ void round_robin(){
 				break;
 			}			
 		}
-		
-		while(!empty(qmagnetic_io)){
-			magnetic_time = max(magnetic_time, front(qmagnetic_io) -> push_time);
-			if(magnetic_time + io_time[MAGNETICTAPE] <= clock_time){
-				printf("Process %d using MAGNETIC TAPE at time %d\n", front(qmagnetic_io) -> pid, magnetic_time);
-				magnetic_time += io_time[MAGNETICTAPE];
-				push(qhigh_priority, front(qmagnetic_io) , magnetic_time);	
-				pop(qmagnetic_io);		
-			} else {
-				break;
-			}			
-		}
-		
-		while(!empty(qprinter_io)){
-			printer_time = max(printer_time, front(qprinter_io) -> push_time);
-			if(printer_time + io_time[PRINTER] <= clock_time){
-				printf("Process %d using PRINTER at time %d\n", front(qprinter_io) -> pid, printer_time);
-				print_process(front(qprinter_io));
-				printer_time += io_time[PRINTER];
-				push(qhigh_priority, front(qprinter_io) , printer_time);	
-				pop(qprinter_io);
-					
-			} else {
-				break;
-			}			
-		}
-		
+	
+	while(!empty(qmagnetic_io)){
+		magnetic_time = max(magnetic_time, front(qmagnetic_io) -> push_time);
+		if(magnetic_time + io_time[MAGNETICTAPE] <= clock_time){
+			printf("Process %d using MAGNETIC TAPE at time %d\n", front(qmagnetic_io) -> pid, magnetic_time);
+			magnetic_time += io_time[MAGNETICTAPE];
+			push(qhigh_priority, front(qmagnetic_io) , magnetic_time);	
+			pop(qmagnetic_io);		
+		} else {
+			break;
+		}			
+	}
+	
+	while(!empty(qprinter_io)){
+		printer_time = max(printer_time, front(qprinter_io) -> push_time);
+		if(printer_time + io_time[PRINTER] <= clock_time){
+			printf("Process %d using PRINTER at time %d\n", front(qprinter_io) -> pid, printer_time);
+			print_process(front(qprinter_io));
+			printer_time += io_time[PRINTER];
+			push(qhigh_priority, front(qprinter_io) , printer_time);	
+			pop(qprinter_io);
+				
+		} else {
+			break;
+		}			
+	}
+}
 
+void arriving(){
+	// add new arrival process
+	while( !empty(qarrival) && front(qarrival)-> push_time  <= clock_time ){
+		printf("Arrived:\n");
+		process *arrivalProcess = front(qarrival);
+		print_process(arrivalProcess);
+		pop(qarrival);
+		push(qhigh_priority, arrivalProcess, arrivalProcess -> push_time);
+	}
+}
+
+void round_robin(){
+	while(finished_process < number_of_process){
+		printf("CLOCK TIME: %d\n", clock_time);
 		
+		arriving(); 
+		returning_of_ios();	
 			
-		// add new arrival process
-		while( !empty(qarrival) && front(qarrival)-> push_time  <= clock_time ){
-			printf("Arrived:\n");
-			process *arrivalProcess = front(qarrival);
-			print_process(arrivalProcess);
-			pop(qarrival);
-			push(qhigh_priority, arrivalProcess, arrivalProcess -> push_time);
-		}
+		
 		
 		
 		
@@ -116,7 +124,11 @@ void round_robin(){
 				printf("Executing (high priority):\n");
 				print_process(next_process);
 				//still needs time to finish		
-				clock_time += delta_time;
+				int next_clock_time = clock_time + delta_time;
+				while(clock_time < next_clock_time){				
+					clock_time++;
+					returning_of_ios();	
+				}
 				if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
 					debug("push disc\n");
 					push(qdisc_io, next_process, clock_time);
@@ -137,7 +149,12 @@ void round_robin(){
 				printf("Executing (high priority):\n");
 				print_process(next_process);
 				//still needs time to finish		
-				clock_time += delta_time;
+				int next_clock_time = clock_time + delta_time;
+				while(clock_time < next_clock_time){				
+					clock_time++;
+					arriving();
+					returning_of_ios();	
+				}
 				if(next_process -> used_cpu_time < next_process -> cpu_time){
 					push(qlow_priority, next_process, clock_time);				
 				} else {
@@ -164,7 +181,12 @@ void round_robin(){
 				printf("Executing (low priority):\n");
 				print_process(next_process);
 				//still needs time to finish		
-				clock_time += delta_time;
+				int next_clock_time = clock_time + delta_time;
+				while(clock_time < next_clock_time){				
+					clock_time++;
+					arriving(); 
+					returning_of_ios();	
+				}
 				if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
 					push(qdisc_io, next_process, clock_time);
 				} else if (next_process -> ios[next_process -> next_io - 1] . type == MAGNETICTAPE){
@@ -185,10 +207,13 @@ void round_robin(){
 				print_process(next_process);
 				//still needs time to finish		
 				
-				int next_clock_time = clock_time + delt
-				clock_time += delta_time;
+				int next_clock_time = clock_time + delta_time;
+				while(clock_time < next_clock_time){				
+					clock_time++;
+					arriving(); 
+					returning_of_ios();	
+				}
 				
-				for()
 				
 				
 				if(next_process -> used_cpu_time < next_process -> cpu_time){
