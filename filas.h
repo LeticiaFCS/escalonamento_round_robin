@@ -2,7 +2,7 @@
 #include<stdio.h>
 #include<stdbool.h>
 
-#define debug printf
+#define debug 
 
 #define DISC 0
 #define MAGNETICTAPE 1
@@ -23,8 +23,8 @@ typedef struct process{
 	int push_time;
 	int cpu_time;
 	
-	int total_time;
-	int used_time;
+	//int total_time;
+	int used_cpu_time;
 	
 	io *ios;
 	int io_qtd;
@@ -38,7 +38,7 @@ void print_process(process *p){
 	if(p == NULL)
 		printf("\tEmpty process\n\n");
 	else {
-		printf("\tProcess with PID %d used: %d total: %d\n\n", p->pid, p->used_time, p->total_time);	
+		printf("\tProcess with PID %d used: %d total: %d\n\n", p->pid, p->used_cpu_time, p->cpu_time);	
 	}
 
 }
@@ -56,8 +56,8 @@ process * new_process(int pid, int arrival_time, int cpu_time, int number_of_io)
 	p -> push_time = arrival_time;
 	p -> cpu_time = cpu_time;
 	
-	p -> total_time = cpu_time;
-	p -> used_time = 0;
+	//p -> total_time = cpu_time;
+	p -> used_cpu_time = 0;
 	
 	p->io_qtd = number_of_io;
 		
@@ -70,7 +70,20 @@ process * new_process(int pid, int arrival_time, int cpu_time, int number_of_io)
 			else if(i == 1)
 				p->ios[i].time = 30;
 			p->ios[i].type = PRINTER;
-			p -> total_time += io_time[ p->ios[i].type ];
+			//p -> total_time += io_time[ p->ios[i].type ];
+		}
+	} else if(number_of_io == -1){
+		number_of_io = 2;
+		p->io_qtd = number_of_io;
+		p->ios = (io *) malloc(number_of_io * sizeof(io));
+
+		for(int i=0; i< number_of_io; i++){
+			if(i == 0)
+				p->ios[i].time = 3;
+			else if(i == 1)
+				p->ios[i].time = 8;
+			p->ios[i].type = DISC;
+			//p -> total_time += io_time[ p->ios[i].type ];
 		}
 	}
 	p->next_io = 0;
