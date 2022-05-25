@@ -43,6 +43,70 @@ void print_process(process *p){
 
 }
 
+int next_int(char * line, int *begin){
+	int x = 0;
+	int i = *begin;
+	while(line[i] != ';'){
+		x = 10 * x + line[i] - '0';
+		i++;
+	}
+	*begin = i+1;
+	return x;
+}
+
+
+process * new_process_teste(char * line, int *time){
+	printf("new process %s", line);
+	int *i = (int *) malloc(sizeof(int));
+	*i = 0;
+	int pid = next_int(line, i);
+	printf("pid %d\n", pid);
+	int arrival_time = next_int(line, i);
+	*time = arrival_time;
+	printf("arrival_time %d\n", arrival_time);
+	int cpu_time = next_int(line, i);
+	printf("cpu_time %d\n", cpu_time);
+	int number_of_io = next_int(line, i);
+	printf("number_of_io %d\n", number_of_io);
+	
+	
+	
+	//allocating memory
+	process * p = (process *) malloc (sizeof (process));
+	if(p == NULL)
+		return NULL;
+	
+	p -> pid = pid;
+	p -> status = 0;
+	p -> priority = 0;
+	p -> push_time = arrival_time;
+	p -> cpu_time = cpu_time;
+	
+	//p -> total_time = cpu_time;
+	p -> used_cpu_time = 0;
+	
+	p->io_qtd = number_of_io;
+		
+	if(number_of_io > 0){
+		p->ios = (io *) malloc(number_of_io * sizeof(io));
+
+		for(int j=0; j< number_of_io; j++){
+			int type_of_io = next_int(line, i);
+			int time_of_io = next_int(line, i);
+			printf("\t type_of_io %d time_of_io %d\n",type_of_io,time_of_io);			
+			p->ios[j].time = time_of_io;
+			p->ios[j].type = type_of_io;
+		}
+	}
+	p->next_io = 0;
+	
+	
+	puts(" ");
+	
+	return p;
+	
+}
+
 // creating new process
 process * new_process(int pid, int arrival_time, int cpu_time, int number_of_io){
 	//allocating memory

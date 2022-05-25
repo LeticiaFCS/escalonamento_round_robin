@@ -6,21 +6,40 @@
 queue *qarrival, *qhigh_priority, *qlow_priority, *qdisc_io, *qmagnetic_io, *qprinter_io, *qauxiliar;
 int number_of_process;
 
-void init(){
+void init(char *file_name){
+
+	printf("file name %s", file_name);
 	qarrival = init_queue(); // read from file
-	//number_of_process = 5;
-	debug("init\n");
-	//push(qarrival, new_process(1,  0, 13, 1), 0);
-	//push(qarrival, new_process(2,  4, 11, 0), 4);
-	//push(qarrival, new_process(3,  5, 7, 0), 5);
-	//push(qarrival, new_process(4,  7, 8, 0), 7);
-	//push(qarrival, new_process(5, 10, 16, 0), 10);
 	
-	number_of_process = 3; 
-	push(qarrival, new_process(1,  0, 31, 2), 0); //2 //22
-	push(qarrival, new_process(2,  2, 7, 0), 2);
-	push(qarrival, new_process(3,  3, 23, -1), 3); //2
-	debug("criou processos\n");
+	printf("\n READING FILE! :D \n\n");
+	
+	number_of_process = 0; 
+	
+	
+	FILE * file_ptr;
+	char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    file_ptr = fopen(file_name, "r");
+    if (file_ptr == NULL){
+    	printf("Nao leu nada\n");
+        exit(0);
+    }
+
+    while ((read = getline(&line, &len, file_ptr)) != -1) {
+    	int *time = (int *) malloc (sizeof(time));
+    	process *next_process = new_process_teste( line, time );
+        push( qarrival, next_process, * time);
+        number_of_process++;
+    }
+
+    fclose(file_ptr);
+    if (line)
+        free(line);
+    
+    
+		
+	
 	qhigh_priority = init_queue();
 	qlow_priority = init_queue();
 	qdisc_io = init_queue();
@@ -49,7 +68,7 @@ void returning_of_ios(){
 	while(!empty(qdisc_io)){
 			disc_time = max(disc_time, front(qdisc_io) -> push_time);
 			if(disc_time + io_time[DISC] <= clock_time){
-				printf("Process %d using DISC at time %d\n", front(qdisc_io) -> pid, disc_time);
+				printf("\tProcess %d used DISC from time %d to time %d\n", front(qdisc_io) -> pid, disc_time, disc_time + io_time[DISC]);
 				disc_time += io_time[DISC];
 				push(qlow_priority, front(qdisc_io) , disc_time);	
 				pop(qdisc_io);		
@@ -61,7 +80,7 @@ void returning_of_ios(){
 	while(!empty(qmagnetic_io)){
 		magnetic_time = max(magnetic_time, front(qmagnetic_io) -> push_time);
 		if(magnetic_time + io_time[MAGNETICTAPE] <= clock_time){
-			printf("Process %d using MAGNETIC TAPE at time %d\n", front(qmagnetic_io) -> pid, magnetic_time);
+			printf("\tProcess %d used MAGNETIC TAPE from time %d to time %d\n", front(qmagnetic_io) -> pid, magnetic_time, magnetic_time + io_time[MAGNETICTAPE]);
 			magnetic_time += io_time[MAGNETICTAPE];
 			push(qhigh_priority, front(qmagnetic_io) , magnetic_time);	
 			pop(qmagnetic_io);		
@@ -73,7 +92,7 @@ void returning_of_ios(){
 	while(!empty(qprinter_io)){
 		printer_time = max(printer_time, front(qprinter_io) -> push_time);
 		if(printer_time + io_time[PRINTER] <= clock_time){
-			printf("Process %d using PRINTER at time %d\n", front(qprinter_io) -> pid, printer_time);
+			printf("\tProcess %d used PRINTER from time %d to time %d\n", front(qprinter_io) -> pid, printer_time, printer_time+io_time[PRINTER]);
 			print_process(front(qprinter_io));
 			printer_time += io_time[PRINTER];
 			push(qhigh_priority, front(qprinter_io) , printer_time);	
@@ -88,7 +107,7 @@ void returning_of_ios(){
 void arriving(){
 	// add new arrival process
 	while( !empty(qarrival) && front(qarrival)-> push_time  <= clock_time ){
-		printf("Arrived:\n");
+		printf("\tArrived:\n");
 		process *arrivalProcess = front(qarrival);
 		print_process(arrivalProcess);
 		pop(qarrival);
@@ -96,147 +115,101 @@ void arriving(){
 	}
 }
 
+void exec_next_process(int fila){
+	process *next_process;
+	if(fila == 0){ // low priority
+		next_process = front(qlow_priority);
+		pop(qlow_priority);	
+		printf("\tExecuting (low priority):\n");
+	} else { // high priority
+		next_process = front(qhigh_priority);
+		pop(qhigh_priority);	
+		printf("\tExecuting (high priority):\n");
+	}
+	int delta_time = min(quantum, next_process -> cpu_time - next_process -> used_cpu_time);
+	
+	int time_until_next_io = -1;
+	if(next_process -> next_io < next_process -> io_qtd) // still have ios)
+		time_until_next_io = next_process -> ios[next_process -> next_io] . time - next_process -> used_cpu_time;
+	
+	if( time_until_next_io != -1 && delta_time >= time_until_next_io ){
+		
+		delta_time = time_until_next_io;
+		next_process -> next_io++;
+		next_process -> used_cpu_time += delta_time;
+		print_process(next_process);
+		//still needs time to finish		
+		int next_clock_time = clock_time + delta_time;
+		while(clock_time < next_clock_time){				
+			clock_time++;			
+			if(clock_time < next_clock_time)
+				printf("CLOCK TIME: %d\n\n", clock_time);
+			arriving(); 
+			returning_of_ios();
+		}
+		if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
+			debug("\tpush disc\n");
+			push(qdisc_io, next_process, clock_time);
+		} else if (next_process -> ios[next_process -> next_io - 1] . type == MAGNETICTAPE){
+			debug("\tpush tape\n");
+			push(qmagnetic_io, next_process, clock_time);				
+		} else { // printer
+			debug("\tpush printer %d\n", clock_time);
+			push(qprinter_io, next_process, clock_time);				
+		}
+		
+		
+					
+	} else {
+		
+		next_process -> used_cpu_time += delta_time;
+		
+		print_process(next_process);
+		//still needs time to finish		
+		int next_clock_time = clock_time + delta_time;
+		while(clock_time < next_clock_time){				
+			clock_time++;
+			if(clock_time < next_clock_time)
+				printf("CLOCK TIME: %d\n\n", clock_time);
+			arriving();
+			returning_of_ios();	
+		}
+		if(next_process -> used_cpu_time < next_process -> cpu_time){
+			push(qlow_priority, next_process, clock_time);				
+		} else {
+			printf("\tFinishing!\n");
+			finished_process++;
+		}
+	}
+
+
+}
+
 void round_robin(){
+	printf("\n BEGINING SIMULATION! :D \n\n");
 	while(finished_process < number_of_process){
-		printf("CLOCK TIME: %d\n", clock_time);
+		printf("CLOCK TIME: %d\n\n", clock_time);
 		
 		arriving(); 
 		returning_of_ios();	
-			
-		
-		
-		
-		
 		if( !empty(qhigh_priority) ){ //executing process from high priority queue
-			process *next_process = front(qhigh_priority);
-			pop(qhigh_priority);
-			int delta_time = min(quantum, next_process -> cpu_time - next_process -> used_cpu_time);
-			
-			int time_until_next_io = -1;
-			if(next_process -> next_io < next_process -> io_qtd) // still have ios)
-				time_until_next_io = next_process -> ios[next_process -> next_io] . time - next_process -> used_cpu_time;
-			
-			if( time_until_next_io != -1 && delta_time >= time_until_next_io ){
-				
-				delta_time = time_until_next_io;
-				next_process -> next_io++;
-				next_process -> used_cpu_time += delta_time;			
-				printf("Executing (high priority):\n");
-				print_process(next_process);
-				//still needs time to finish		
-				int next_clock_time = clock_time + delta_time;
-				while(clock_time < next_clock_time){				
-					clock_time++;
-					arriving(); 
-					returning_of_ios();	
-				}
-				if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
-					debug("push disc\n");
-					push(qdisc_io, next_process, clock_time);
-				} else if (next_process -> ios[next_process -> next_io - 1] . type == MAGNETICTAPE){
-					debug("push tape\n");
-					push(qmagnetic_io, next_process, clock_time);				
-				} else { // printer
-					debug("H push printer %d\n", clock_time);
-					push(qprinter_io, next_process, clock_time);				
-				}
-				
-				
-							
-			} else {
-				
-				next_process -> used_cpu_time += delta_time;
-				
-				printf("Executing (high priority):\n");
-				print_process(next_process);
-				//still needs time to finish		
-				int next_clock_time = clock_time + delta_time;
-				while(clock_time < next_clock_time){				
-					clock_time++;
-					arriving();
-					returning_of_ios();	
-				}
-				if(next_process -> used_cpu_time < next_process -> cpu_time){
-					push(qlow_priority, next_process, clock_time);				
-				} else {
-					printf("Finished!\n");
-					finished_process++;
-				}
-			}
+			exec_next_process(1);
 		} else if( !empty(qlow_priority) ){ //executing process from low priority queue
-			process *next_process = front(qlow_priority);
-			pop(qlow_priority);	
-			int delta_time = min(quantum, next_process -> cpu_time - next_process -> used_cpu_time);
-			
-			int time_until_next_io = -1;
-			if(next_process -> next_io < next_process -> io_qtd) // still have ios)
-				time_until_next_io = next_process -> ios[next_process -> next_io] . time - next_process -> used_cpu_time;
-			
-			if( time_until_next_io != -1 && delta_time >= time_until_next_io ){
-				
-				delta_time = time_until_next_io;
-				
-				
-				next_process -> next_io++;
-				next_process -> used_cpu_time += delta_time;			
-				printf("Executing (low priority):\n");
-				print_process(next_process);
-				//still needs time to finish		
-				int next_clock_time = clock_time + delta_time;
-				while(clock_time < next_clock_time){				
-					clock_time++;
-					arriving(); 
-					returning_of_ios();	
-				}
-				if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
-					push(qdisc_io, next_process, clock_time);
-				} else if (next_process -> ios[next_process -> next_io - 1] . type == MAGNETICTAPE){
-					push(qmagnetic_io, next_process, clock_time);				
-				} else { // printer
-					debug("L push printer %d\n", clock_time);
-					push(qprinter_io, next_process, clock_time);				
-				}
-				
-				
-							
-			} else {
-				
-				
-				next_process -> used_cpu_time += delta_time;
-				
-				printf("Executing (low priority):\n");
-				print_process(next_process);
-				//still needs time to finish		
-				
-				int next_clock_time = clock_time + delta_time;
-				while(clock_time < next_clock_time){				
-					clock_time++;
-					arriving(); 
-					returning_of_ios();	
-				}
-				
-				
-				
-				if(next_process -> used_cpu_time < next_process -> cpu_time){
-					push(qlow_priority, next_process, clock_time);				
-				} else {
-					printf("Finished!\n");
-					finished_process++; 
-				}
-			}		
-		
+			exec_next_process(0);
 		} else {
 			// all process are in IO or didn't arrived
 			clock_time ++;		
 		}
 	}
 	
-	printf("Simulacao finalizada no tempo %d\n", clock_time);
+	printf("\n\nFinished simulation on time %d\n", clock_time);
 	
 }
 
-int main(){	
-	init();
+
+
+int main(int argc, char *argv[]){	
+	init(argv[1]);
 	round_robin();
 	
 }
