@@ -10,7 +10,7 @@ Os processos devem ser representados como um processo por linha em ordem **cresc
 
 Formato da linha que representa um processo:
 
-pid;arrival_time;cpu_time;number_of_io;type_of_io_1;time_of_io1; ... ;type_of_io_{number_of_io};time_of_io_{number_of_io}
+pid;arrival_time;cpu_time;number_of_io;type_of_io_1;time_of_io1; ... ;type_of_io_{number_of_io};time_of_io_{number_of_io};
 
 
 # Para rodar
