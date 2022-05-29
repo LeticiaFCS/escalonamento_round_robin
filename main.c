@@ -3,15 +3,15 @@
 
 #define quantum 4
 
-queue *qarrival, *qhigh_priority, *qlow_priority, *qdisc_io, *qmagnetic_io, *qprinter_io, *qauxiliar;
+queue *qarrival, *qhigh_priority, *qlow_priority, *qdisc_io, *qmagnetic_io, *qprinter_io;
 int number_of_process;
 
+//reads process from file nd inits queues
 void init(char *file_name){
 
-	printf("file name %s", file_name);
+	printf("file name %s\n\n", file_name);
 	qarrival = init_queue(); // read from file
 	
-	printf("\n READING FILE! :D \n\n");
 	
 	number_of_process = 0; 
 	
@@ -22,13 +22,13 @@ void init(char *file_name){
     ssize_t read;
     file_ptr = fopen(file_name, "r");
     if (file_ptr == NULL){
-    	printf("Nao leu nada\n");
+    	printf("Didn't read anything\n");
         exit(0);
     }
 
     while ((read = getline(&line, &len, file_ptr)) != -1) {
     	int *time = (int *) malloc (sizeof(time));
-    	process *next_process = new_process_teste( line, time );
+    	process *next_process = new_process( line, time );
         push( qarrival, next_process, * time);
         number_of_process++;
     }
@@ -36,9 +36,7 @@ void init(char *file_name){
     fclose(file_ptr);
     if (line)
         free(line);
-    
-    
-		
+
 	
 	qhigh_priority = init_queue();
 	qlow_priority = init_queue();
@@ -64,6 +62,8 @@ int disc_time = 0;
 int printer_time = 0;
 int magnetic_time = 0;
 
+
+//tests if process returned from ios
 void returning_of_ios(){
 	while(!empty(qdisc_io)){
 			disc_time = max(disc_time, front(qdisc_io) -> push_time);
@@ -104,8 +104,9 @@ void returning_of_ios(){
 	}
 }
 
+
+// add new arrival process
 void arriving(){
-	// add new arrival process
 	while( !empty(qarrival) && front(qarrival)-> push_time  <= clock_time ){
 		printf("\tArrived:\n");
 		process *arrivalProcess = front(qarrival);
@@ -115,9 +116,11 @@ void arriving(){
 	}
 }
 
-void exec_next_process(int fila){
+
+// executes the process in front of 
+void exec_next_process(int current_queue){
 	process *next_process;
-	if(fila == 0){ // low priority
+	if(current_queue == 0){ // low priority
 		next_process = front(qlow_priority);
 		pop(qlow_priority);	
 		printf("\tExecuting (low priority):\n");
@@ -177,6 +180,7 @@ void exec_next_process(int fila){
 		if(next_process -> used_cpu_time < next_process -> cpu_time){
 			push(qlow_priority, next_process, clock_time);				
 		} else {
+			free_process(next_process);
 			printf("\tFinishing!\n");
 			finished_process++;
 		}
@@ -185,8 +189,8 @@ void exec_next_process(int fila){
 
 }
 
+// Round Robin simulation
 void round_robin(){
-	printf("\n BEGINING SIMULATION! :D \n\n");
 	while(finished_process < number_of_process){
 		printf("CLOCK TIME: %d\n\n", clock_time);
 		
@@ -204,6 +208,12 @@ void round_robin(){
 	
 	printf("\n\nFinished simulation on time %d\n", clock_time);
 	
+	free_queue(qarrival);
+	free_queue(qhigh_priority);
+	free_queue(qlow_priority);
+	free_queue(qdisc_io);
+	free_queue(qmagnetic_io);
+	free_queue(qprinter_io);	
 }
 
 
@@ -211,12 +221,6 @@ void round_robin(){
 int main(int argc, char *argv[]){	
 	init(argv[1]);
 	round_robin();
-	
 }
 
-
-/*
-	push_time - momento que um processo entra na fila
-
-*/
 

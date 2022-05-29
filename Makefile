@@ -3,7 +3,7 @@ HEADER = filas.h
 default: main
 
 main.o: main.c $(HEADER)
-	gcc -c main.c -o main.o
+	gcc -c main.c -o main.o -Wall
 
 main: main.o
 	gcc main.o -o main

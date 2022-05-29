@@ -32,6 +32,11 @@ typedef struct process{
 	
 } process;
 
+// freeing process
+void free_process(process *p){
+	free(p -> ios);
+	free(p);
+}
 
 // printing data of process
 void print_process(process *p){
@@ -43,6 +48,7 @@ void print_process(process *p){
 
 }
 
+//gets next integer from the line spliting in the next ";"
 int next_int(char * line, int *begin){
 	int x = 0;
 	int i = *begin;
@@ -54,8 +60,8 @@ int next_int(char * line, int *begin){
 	return x;
 }
 
-
-process * new_process_teste(char * line, int *time){
+//creates new process from the line of file
+process * new_process(char * line, int *time){
 	printf("new process %s", line);
 	int *i = (int *) malloc(sizeof(int));
 	*i = 0;
@@ -107,53 +113,7 @@ process * new_process_teste(char * line, int *time){
 	
 }
 
-// creating new process
-process * new_process(int pid, int arrival_time, int cpu_time, int number_of_io){
-	//allocating memory
-	process * p = (process *) malloc (sizeof (process));
-	if(p == NULL)
-		return NULL;
-	
-	p -> pid = pid;
-	p -> status = 0;
-	p -> priority = 0;
-	p -> push_time = arrival_time;
-	p -> cpu_time = cpu_time;
-	
-	//p -> total_time = cpu_time;
-	p -> used_cpu_time = 0;
-	
-	p->io_qtd = number_of_io;
-		
-	if(number_of_io > 0){
-		p->ios = (io *) malloc(number_of_io * sizeof(io));
 
-		for(int i=0; i< number_of_io; i++){
-			if(i == 0)
-				p->ios[i].time = 1;
-			else if(i == 1)
-				p->ios[i].time = 30;
-			p->ios[i].type = PRINTER;
-			//p -> total_time += io_time[ p->ios[i].type ];
-		}
-	} else if(number_of_io == -1){
-		number_of_io = 2;
-		p->io_qtd = number_of_io;
-		p->ios = (io *) malloc(number_of_io * sizeof(io));
-
-		for(int i=0; i< number_of_io; i++){
-			if(i == 0)
-				p->ios[i].time = 3;
-			else if(i == 1)
-				p->ios[i].time = 8;
-			p->ios[i].type = DISC;
-			//p -> total_time += io_time[ p->ios[i].type ];
-		}
-	}
-	p->next_io = 0;
-	
-	return p;
-}
 
 typedef struct queue_node{
 	process *p;
@@ -167,6 +127,7 @@ typedef struct queue{
 } queue;
 
 
+//inits queue
 queue *init_queue(){
 	queue *q = (queue *) malloc (sizeof(queue));
 	q -> head = NULL;
@@ -174,12 +135,29 @@ queue *init_queue(){
 	return q;
 }
 
+//tests if queue is empty
 int empty(queue *q){
 	if(q->head == NULL)
 		return 1;
 	return 0;
 }
 
+//freeing a queue
+void free_queue(queue *q){
+	if(q != NULL){
+		if(q -> head != NULL){
+			free(q -> head);
+			q -> head = NULL;
+		}if(q -> back != NULL){
+			free(q -> back);
+			q -> back = NULL;
+		}
+		free(q);
+		q = NULL;
+	}
+}
+
+//push a new process to the queue
 void push(queue * q, process *p, int time){
 	if( empty(q) ){
 		q -> head = (queue_node *) malloc (sizeof(queue_node));
@@ -197,21 +175,21 @@ void push(queue * q, process *p, int time){
 }
 
 
-
+//returns the process in front of the queue or NULL if queue is empty
 process *front(queue *q){
 	if( empty(q) )
 		return NULL;
 	return q -> head -> p;
 }
 
-
+//pops element of queue if it is not empty
 void pop(queue *q){
 	if( empty(q) ){
 		return;
 	}
 	// only one element
 	if(q -> head == q -> back){
-		free(q -> head);
+		free(q -> head);		
 		q -> head = q -> back = NULL;
 	}
 	else{
