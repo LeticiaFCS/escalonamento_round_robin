@@ -34,9 +34,9 @@ void init(char *file_name){
     }
 
     fclose(file_ptr);
-    if (line)
-        free(line);
-
+    if (line != NULL){
+    	free(line);
+	}
 	
 	qhigh_priority = init_queue();
 	qlow_priority = init_queue();
@@ -151,14 +151,11 @@ void exec_next_process(int current_queue){
 			returning_of_ios();
 		}
 		if(next_process -> ios[next_process -> next_io - 1] . type == DISC ){
-			debug("\tpush disc\n");
 			push(qdisc_io, next_process, clock_time);
 		} else if (next_process -> ios[next_process -> next_io - 1] . type == MAGNETICTAPE){
-			debug("\tpush tape\n");
 			push(qmagnetic_io, next_process, clock_time);				
 		} else { // printer
-			debug("\tpush printer %d\n", clock_time);
-			push(qprinter_io, next_process, clock_time);				
+			push(qprinter_io, next_process, clock_time);			
 		}
 		
 		

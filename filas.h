@@ -2,7 +2,6 @@
 #include<stdio.h>
 #include<stdbool.h>
 
-#define debug 
 
 #define DISC 0
 #define MAGNETICTAPE 1
@@ -23,7 +22,6 @@ typedef struct process{
 	int push_time;
 	int cpu_time;
 	
-	//int total_time;
 	int used_cpu_time;
 	
 	io *ios;
